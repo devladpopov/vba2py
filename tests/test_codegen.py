@@ -22,7 +22,7 @@ class TestSimpleSub:
 
     def test_dim_and_assign(self):
         py = vba_to_py("Sub T()\nDim x As Integer\nx = 42\nEnd Sub")
-        assert "x = None" in py
+        assert "x: int = None" in py
         assert "x = 42" in py
 
 
@@ -128,3 +128,97 @@ class TestOnError:
     def test_resume_next(self):
         py = vba_to_py("Sub T()\nOn Error Resume Next\nEnd Sub")
         assert "Resume Next" in py or "resume" in py.lower()
+
+    def test_goto_label(self):
+        py = vba_to_py("Sub T()\nOn Error GoTo ErrHandler\nEnd Sub")
+        assert "GoTo ErrHandler" in py
+
+    def test_goto_zero(self):
+        py = vba_to_py("Sub T()\nOn Error GoTo 0\nEnd Sub")
+        assert "GoTo 0" in py
+
+
+class TestReDim:
+    def test_redim_basic(self):
+        py = vba_to_py("Sub T()\nReDim arr(10)\nEnd Sub")
+        assert "arr = [None] * (10 + 1)" in py
+
+    def test_redim_preserve(self):
+        py = vba_to_py("Sub T()\nReDim Preserve arr(20)\nEnd Sub")
+        assert "extend" in py
+        assert "arr" in py
+
+
+class TestGoTo:
+    def test_goto(self):
+        py = vba_to_py("Sub T()\nGoTo ErrorHandler\nEnd Sub")
+        assert "GoTo ErrorHandler" in py
+        assert "TODO" in py
+
+
+class TestErase:
+    def test_erase_array(self):
+        py = vba_to_py("Sub T()\nErase arr\nEnd Sub")
+        assert "arr = []" in py
+
+
+class TestTypeHints:
+    def test_dim_with_type(self):
+        py = vba_to_py("Sub T()\nDim x As Integer\nEnd Sub")
+        assert "x: int = None" in py
+
+    def test_dim_string(self):
+        py = vba_to_py("Sub T()\nDim s As String\nEnd Sub")
+        assert "s: str = None" in py
+
+    def test_dim_double(self):
+        py = vba_to_py("Sub T()\nDim d As Double\nEnd Sub")
+        assert "d: float = None" in py
+
+    def test_dim_boolean(self):
+        py = vba_to_py("Sub T()\nDim b As Boolean\nEnd Sub")
+        assert "b: bool = None" in py
+
+    def test_dim_no_type(self):
+        py = vba_to_py("Sub T()\nDim x\nEnd Sub")
+        assert "x = None" in py
+        assert ": " not in py.split("x = None")[0].split("\n")[-1]
+
+    def test_dim_new_object(self):
+        py = vba_to_py("Sub T()\nDim c As New Collection\nEnd Sub")
+        assert "c = Collection()" in py
+
+    def test_dim_array(self):
+        py = vba_to_py("Sub T()\nDim arr(10) As Integer\nEnd Sub")
+        assert "arr = []" in py
+
+
+class TestConstant:
+    def test_const_string(self):
+        py = vba_to_py('Sub T()\nConst NAME = "Hello"\nEnd Sub')
+        assert 'NAME = "Hello"' in py
+
+    def test_const_number(self):
+        py = vba_to_py("Sub T()\nConst MAX_SIZE = 100\nEnd Sub")
+        assert "MAX_SIZE = 100" in py
+
+
+class TestWithMethodCalls:
+    def test_with_dot_call(self):
+        py = vba_to_py('Sub T()\nWith obj\n.Add "item"\nEnd With\nEnd Sub')
+        assert "_with_0.Add(" in py
+
+    def test_with_dot_assign(self):
+        py = vba_to_py('Sub T()\nWith obj\n.Name = "test"\nEnd With\nEnd Sub')
+        assert '_with_0.Name = "test"' in py
+
+
+class TestNested:
+    def test_nested_if_in_for(self):
+        py = vba_to_py("Sub T()\nFor i = 1 To 10\nIf i > 5 Then\nx = i\nEnd If\nNext i\nEnd Sub")
+        assert "for i in range(1, 10 + 1):" in py
+        assert "if (i > 5):" in py
+
+    def test_for_with_exit(self):
+        py = vba_to_py("Sub T()\nFor i = 1 To 10\nIf i = 5 Then\nExit For\nEnd If\nNext i\nEnd Sub")
+        assert "break" in py

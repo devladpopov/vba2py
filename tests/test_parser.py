@@ -5,7 +5,7 @@ from vba2py.ast_nodes import (
     Module, Sub, Function, ForStmt, IfStmt, DimStmt,
     CallStmt, AssignStmt, WhileStmt, DoWhileStmt, DoUntilStmt,
     SelectCaseStmt, ForEachStmt, WithStmt, ExitStmt, OnErrorStmt,
-    SetStmt, LabelStmt,
+    SetStmt, LabelStmt, ReDimStmt, GoToStmt, EraseStmt, OptionStmt,
 )
 
 
@@ -169,3 +169,78 @@ class TestModuleLevel:
         mod = parse(code)
         assert len(mod.declarations) == 1
         assert len(mod.procedures) == 1
+
+
+class TestNewConstructs:
+    def test_redim(self):
+        mod = parse("Sub T()\nReDim arr(10)\nEnd Sub")
+        stmt = mod.procedures[0].body[0]
+        assert isinstance(stmt, ReDimStmt)
+        assert stmt.name == "arr"
+        assert not stmt.preserve
+
+    def test_redim_preserve(self):
+        mod = parse("Sub T()\nReDim Preserve arr(20)\nEnd Sub")
+        stmt = mod.procedures[0].body[0]
+        assert isinstance(stmt, ReDimStmt)
+        assert stmt.preserve
+        assert stmt.name == "arr"
+
+    def test_goto(self):
+        mod = parse("Sub T()\nGoTo ErrorHandler\nEnd Sub")
+        stmt = mod.procedures[0].body[0]
+        assert isinstance(stmt, GoToStmt)
+        assert stmt.label == "ErrorHandler"
+
+    def test_erase(self):
+        mod = parse("Sub T()\nErase arr\nEnd Sub")
+        stmt = mod.procedures[0].body[0]
+        assert isinstance(stmt, EraseStmt)
+        assert "arr" in stmt.arrays
+
+    def test_option_explicit(self):
+        mod = parse("Option Explicit\nSub T()\nEnd Sub")
+        assert len(mod.declarations) == 1
+        assert isinstance(mod.declarations[0], OptionStmt)
+
+    def test_dim_multiple(self):
+        mod = parse("Sub T()\nDim x As Integer, y As String, z\nEnd Sub")
+        stmt = mod.procedures[0].body[0]
+        assert isinstance(stmt, DimStmt)
+        assert len(stmt.declarations) == 3
+        assert stmt.declarations[0].var_type == "Integer"
+        assert stmt.declarations[1].var_type == "String"
+        assert stmt.declarations[2].var_type is None
+
+    def test_dim_array(self):
+        mod = parse("Sub T()\nDim arr(10) As Integer\nEnd Sub")
+        stmt = mod.procedures[0].body[0]
+        assert isinstance(stmt, DimStmt)
+        assert stmt.declarations[0].is_array
+
+    def test_optional_param(self):
+        mod = parse("Sub T(Optional x As Integer = 5)\nEnd Sub")
+        param = mod.procedures[0].params[0]
+        assert param.optional
+        assert param.default is not None
+
+    def test_byval_param(self):
+        mod = parse("Function F(ByVal x As String) As String\nF = x\nEnd Function")
+        param = mod.procedures[0].params[0]
+        assert param.passing == "ByVal"
+
+    def test_nested_if(self):
+        code = "Sub T()\nIf x > 0 Then\nIf y > 0 Then\nz = 1\nEnd If\nEnd If\nEnd Sub"
+        mod = parse(code)
+        outer_if = mod.procedures[0].body[0]
+        assert isinstance(outer_if, IfStmt)
+        inner_if = outer_if.then_body[0]
+        assert isinstance(inner_if, IfStmt)
+
+    def test_nested_for(self):
+        code = "Sub T()\nFor i = 1 To 5\nFor j = 1 To 5\nx = i * j\nNext j\nNext i\nEnd Sub"
+        mod = parse(code)
+        outer_for = mod.procedures[0].body[0]
+        assert isinstance(outer_for, ForStmt)
+        inner_for = outer_for.body[0]
+        assert isinstance(inner_for, ForStmt)

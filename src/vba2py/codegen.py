@@ -12,6 +12,7 @@ from vba2py.ast_nodes import (
     AssignStmt, SetStmt, CallStmt, IfStmt, SelectCaseStmt, CaseClause,
     ForStmt, ForEachStmt, DoWhileStmt, DoUntilStmt, WhileStmt,
     WithStmt, DimStmt, ExitStmt, ReturnStmt, OnErrorStmt, LabelStmt,
+    ReDimStmt, GoToStmt, EraseStmt, OptionStmt,
     Literal, Identifier, MemberAccess, IndexAccess, BinaryOp, UnaryOp,
     NewExpr, DotAccess, Expression, Statement, ASTNode,
 )
@@ -155,6 +156,9 @@ class CodeGenerator:
             elif decl.var_type and decl.var_type.startswith("New "):
                 cls = decl.var_type[4:]
                 self._emit(f"{name} = {cls}()")
+            elif decl.var_type:
+                py_type = _TYPE_MAP.get(decl.var_type.lower(), decl.var_type)
+                self._emit(f"{name}: {py_type} = None")
             else:
                 self._emit(f"{name} = None")
 
@@ -200,6 +204,12 @@ class CodeGenerator:
             if py_name.startswith("vba_"):
                 self._runtime_imports.add(py_name)
             self._emit(f"{py_name}({args_str})")
+            return
+
+        # Dot-call inside With block: .Method(args)
+        if name.startswith(".") and self._with_stack:
+            member = self._py_name(name[1:])
+            self._emit(f"{self._with_stack[-1]}.{member}({args_str})")
             return
 
         # Member call: obj.Method(args)
@@ -349,6 +359,31 @@ class CodeGenerator:
 
     def _emit_LabelStmt(self, node: LabelStmt) -> None:
         self._emit(f"# label: {node.name}")
+
+    def _emit_ReDimStmt(self, node: ReDimStmt) -> None:
+        name = self._py_name(node.name)
+        if node.preserve and node.dimensions:
+            dim = self._expr(node.dimensions[0])
+            self._emit(f"if len({name}) < {dim} + 1:")
+            self._indent += 1
+            self._emit(f"{name}.extend([None] * ({dim} + 1 - len({name})))")
+            self._indent -= 1
+        else:
+            if node.dimensions:
+                dim = self._expr(node.dimensions[0])
+                self._emit(f"{name} = [None] * ({dim} + 1)")
+            else:
+                self._emit(f"{name} = []")
+
+    def _emit_GoToStmt(self, node: GoToStmt) -> None:
+        self._emit(f"# GoTo {node.label}  -- TODO: restructure control flow")
+
+    def _emit_EraseStmt(self, node: EraseStmt) -> None:
+        for arr in node.arrays:
+            self._emit(f"{self._py_name(arr)} = []")
+
+    def _emit_OptionStmt(self, node: OptionStmt) -> None:
+        self._emit(f"# Option {node.option}")
 
     # -- Expression rendering -----------------------------------------------
 

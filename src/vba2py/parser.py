@@ -12,6 +12,7 @@ from vba2py.ast_nodes import (
     AssignStmt, SetStmt, CallStmt, IfStmt, CaseClause, SelectCaseStmt,
     ForStmt, ForEachStmt, DoWhileStmt, DoUntilStmt, WhileStmt,
     WithStmt, DimStmt, ExitStmt, ReturnStmt, OnErrorStmt, LabelStmt,
+    ReDimStmt, GoToStmt, EraseStmt, OptionStmt,
     Literal, Identifier, MemberAccess, IndexAccess, BinaryOp, UnaryOp,
     NewExpr, DotAccess, Expression, Statement,
 )
@@ -318,6 +319,12 @@ class Parser:
             return self._parse_call()
         if tt is TokenType.KW_EXIT:
             return self.parse_exit()
+        if tt is TokenType.KW_REDIM:
+            return self._parse_redim()
+        if tt is TokenType.KW_GOTO:
+            return self._parse_goto()
+        if tt is TokenType.KW_ERASE:
+            return self._parse_erase()
         if tt is TokenType.KW_ON:
             return self.parse_on_error()
         if tt is TokenType.KW_DEBUG:
@@ -720,6 +727,46 @@ class Parser:
         node.lineno = lineno
         return node
 
+    # -- ReDim --------------------------------------------------------------
+
+    def _parse_redim(self) -> ReDimStmt:
+        lineno = self.peek().lineno
+        self.expect(TokenType.KW_REDIM)
+        preserve = bool(self.match(TokenType.KW_PRESERVE))
+        name_tok = self.expect(TokenType.IDENTIFIER)
+        dims: list[Expression] = []
+        if self.match(TokenType.LPAREN):
+            if not self.at(TokenType.RPAREN):
+                dims.append(self.parse_expression())
+                while self.match(TokenType.COMMA):
+                    dims.append(self.parse_expression())
+            self.expect(TokenType.RPAREN)
+        node = ReDimStmt(name=name_tok.value, dimensions=dims, preserve=preserve)
+        node.lineno = lineno
+        return node
+
+    # -- GoTo ---------------------------------------------------------------
+
+    def _parse_goto(self) -> GoToStmt:
+        lineno = self.peek().lineno
+        self.expect(TokenType.KW_GOTO)
+        label_tok = self.expect(TokenType.IDENTIFIER)
+        node = GoToStmt(label=label_tok.value)
+        node.lineno = lineno
+        return node
+
+    # -- Erase --------------------------------------------------------------
+
+    def _parse_erase(self) -> EraseStmt:
+        lineno = self.peek().lineno
+        self.expect(TokenType.KW_ERASE)
+        arrays: list[str] = [self.expect(TokenType.IDENTIFIER).value]
+        while self.match(TokenType.COMMA):
+            arrays.append(self.expect(TokenType.IDENTIFIER).value)
+        node = EraseStmt(arrays=arrays)
+        node.lineno = lineno
+        return node
+
     # -- Identifier-led statements ------------------------------------------
 
     def _parse_lhs_expression(self) -> Expression:
@@ -751,6 +798,16 @@ class Parser:
             name_tok = self.advance()
             self.advance()  # consume colon
             node = LabelStmt(name=name_tok.value)
+            node.lineno = lineno
+            return node
+
+        # Option Explicit / Option Base 0|1 / Option Compare Text|Binary
+        if self.peek().value.lower() == "option":
+            self.advance()  # consume "Option"
+            parts: list[str] = []
+            while not self.at(TokenType.NEWLINE, TokenType.COLON, TokenType.EOF):
+                parts.append(self.advance().value)
+            node = OptionStmt(option=" ".join(parts))
             node.lineno = lineno
             return node
 

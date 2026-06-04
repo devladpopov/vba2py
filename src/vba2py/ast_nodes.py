@@ -253,3 +253,29 @@ class TypeOfExpr(Expression):
 class DotAccess(Expression):
     """Shorthand member access inside ``With`` blocks (e.g. ``.Name``)."""
     member: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Additional statements
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ReDimStmt(Statement):
+    name: str = ""
+    dimensions: list[Expression] = field(default_factory=list)
+    preserve: bool = False
+
+
+@dataclass
+class GoToStmt(Statement):
+    label: str = ""
+
+
+@dataclass
+class EraseStmt(Statement):
+    arrays: list[str] = field(default_factory=list)
+
+
+@dataclass
+class OptionStmt(Statement):
+    option: str = ""  # "Explicit", "Base 0", "Base 1", "Compare Text", etc.
