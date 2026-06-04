@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Project-specific private files
+recent-messages.jsonl
+main-memory.md
+SOUL.md
+topic-memory.md
+
+# Java (ANTLR build)
+*.class
+*.jar
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Environment
+.env
+*.env
