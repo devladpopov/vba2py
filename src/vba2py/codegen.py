@@ -54,7 +54,7 @@ _OP_MAP: dict[str, str] = {
     "<=": "<=", ">=": ">=",
     "And": "and", "Or": "or", "Not": "not",
     "Xor": "^", "Mod": "%",
-    "Is": "is", "Like": "like",  # 'like' needs runtime
+    "Is": "is",  # 'Like' handled specially in _binary_op -> vba_like()
 }
 
 
@@ -466,6 +466,11 @@ class CodeGenerator:
         # String concatenation: & -> str() + str()
         if node.op == "&":
             return f"str({left}) + str({right})"
+
+        # VBA Like operator -> vba_like() runtime call
+        if node.op == "Like":
+            self._runtime_imports.add("vba_like")
+            return f"vba_like({left}, {right})"
 
         return f"({left} {op} {right})"
 

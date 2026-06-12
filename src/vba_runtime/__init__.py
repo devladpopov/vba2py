@@ -13,6 +13,7 @@ from vba_runtime.strings import (
     vba_lcase,
     vba_left,
     vba_len,
+    vba_like,
     vba_ltrim,
     vba_mid,
     vba_replace,
@@ -83,7 +84,7 @@ __all__ = [
     "vba_left", "vba_right", "vba_mid", "vba_instr", "vba_replace",
     "vba_len", "vba_trim", "vba_ltrim", "vba_rtrim",
     "vba_ucase", "vba_lcase", "vba_space", "vba_string_func",
-    "vba_asc", "vba_chr", "vba_split", "vba_join", "vba_strreverse",
+    "vba_asc", "vba_chr", "vba_split", "vba_join", "vba_strreverse", "vba_like",
     # Conversion
     "vba_cstr", "vba_cint", "vba_clng", "vba_cdbl", "vba_cbool", "vba_cdate",
     "vba_val", "vba_int_func", "vba_fix",

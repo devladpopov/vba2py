@@ -178,3 +178,39 @@ def vba_join(arr: list, delimiter: str = " ") -> str:
 def vba_strreverse(s: Optional[str]) -> str:
     """StrReverse(s) -- reverse a string."""
     return _safe_str(s)[::-1]
+
+
+def vba_like(s: Optional[str], pattern: Optional[str]) -> bool:
+    """VBA ``Like`` operator: wildcard pattern matching.
+
+    Supports: ``*`` (any chars), ``?`` (single char), ``#`` (single digit),
+    ``[charlist]`` and ``[!charlist]`` (character classes).
+    """
+    import re
+
+    s = _safe_str(s)
+    pattern = _safe_str(pattern)
+    regex_parts: list[str] = []
+    i = 0
+    while i < len(pattern):
+        ch = pattern[i]
+        if ch == "*":
+            regex_parts.append(".*")
+        elif ch == "?":
+            regex_parts.append(".")
+        elif ch == "#":
+            regex_parts.append(r"\d")
+        elif ch == "[":
+            end = pattern.find("]", i + 1)
+            if end == -1:
+                regex_parts.append(re.escape(ch))
+            else:
+                inner = pattern[i + 1 : end]
+                if inner.startswith("!"):
+                    inner = "^" + inner[1:]
+                regex_parts.append("[" + inner + "]")
+                i = end
+        else:
+            regex_parts.append(re.escape(ch))
+        i += 1
+    return re.fullmatch("".join(regex_parts), s) is not None

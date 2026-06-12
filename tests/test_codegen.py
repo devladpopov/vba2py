@@ -222,3 +222,12 @@ class TestNested:
     def test_for_with_exit(self):
         py = vba_to_py("Sub T()\nFor i = 1 To 10\nIf i = 5 Then\nExit For\nEnd If\nNext i\nEnd Sub")
         assert "break" in py
+
+
+class TestLikeOperator:
+    def test_like_generates_runtime_call(self):
+        py = vba_to_py('Sub T()\nIf s Like "a*" Then\nx = 1\nEnd If\nEnd Sub')
+        assert 'vba_like(s, "a*")' in py
+        assert "from vba_runtime import" in py
+        assert "vba_like" in py
+        compile(py, "<gen>", "exec")

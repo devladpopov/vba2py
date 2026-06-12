@@ -199,3 +199,32 @@ class TestSpecialValues:
             bool(NULL)
         # Null propagation
         assert (NULL + 1) is NULL
+
+
+class TestVbaLike:
+    def test_star(self):
+        from vba_runtime.strings import vba_like
+        assert vba_like("aBBBa", "a*a") is True
+        assert vba_like("hello", "h*") is True
+        assert vba_like("hello", "x*") is False
+
+    def test_question_mark(self):
+        from vba_runtime.strings import vba_like
+        assert vba_like("aA", "a?") is True
+        assert vba_like("a", "a?") is False
+
+    def test_digit(self):
+        from vba_runtime.strings import vba_like
+        assert vba_like("a5", "a#") is True
+        assert vba_like("ab", "a#") is False
+
+    def test_charlist(self):
+        from vba_runtime.strings import vba_like
+        assert vba_like("F", "[A-Z]") is True
+        assert vba_like("f", "[!A-Z]") is True
+        assert vba_like("F", "[!A-Z]") is False
+
+    def test_combined(self):
+        from vba_runtime.strings import vba_like
+        assert vba_like("CAT123", "C?T###") is True
+        assert vba_like("CAT12X", "C?T###") is False
