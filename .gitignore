@@ -38,3 +38,6 @@ htmlcov/
 # Environment
 .env
 *.env
+CLAUDE.md
+RESEARCH.md
+VISION.md
