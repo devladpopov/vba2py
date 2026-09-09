@@ -6,6 +6,7 @@ from vba2py.ast_nodes import (
     CallStmt, AssignStmt, WhileStmt, DoWhileStmt, DoUntilStmt,
     SelectCaseStmt, ForEachStmt, WithStmt, ExitStmt, OnErrorStmt,
     SetStmt, LabelStmt, ReDimStmt, GoToStmt, EraseStmt, OptionStmt,
+    CaseRange, CaseIs,
 )
 
 
@@ -139,6 +140,31 @@ class TestControlFlow:
         assert isinstance(stmt, SelectCaseStmt)
         assert len(stmt.cases) == 2
         assert stmt.else_body is not None
+
+    def test_select_case_to_range(self):
+        code = "Sub T()\nSelect Case x\nCase 1 To 10\ny = 1\nEnd Select\nEnd Sub"
+        mod = parse(code)
+        stmt = mod.procedures[0].body[0]
+        assert isinstance(stmt, SelectCaseStmt)
+        item = stmt.cases[0].expressions[0]
+        assert isinstance(item, CaseRange)
+        assert item.lo is not None and item.hi is not None
+
+    def test_select_case_is(self):
+        code = "Sub T()\nSelect Case x\nCase Is > 100\ny = 1\nCase Is <= 0\ny = -1\nEnd Select\nEnd Sub"
+        mod = parse(code)
+        stmt = mod.procedures[0].body[0]
+        assert isinstance(stmt.cases[0].expressions[0], CaseIs)
+        assert stmt.cases[0].expressions[0].op == ">"
+        assert stmt.cases[1].expressions[0].op == "<="
+
+    def test_select_case_mixed_items(self):
+        code = "Sub T()\nSelect Case x\nCase 1, 5 To 9, Is > 100\ny = 1\nEnd Select\nEnd Sub"
+        mod = parse(code)
+        items = mod.procedures[0].body[0].cases[0].expressions
+        assert len(items) == 3
+        assert isinstance(items[1], CaseRange)
+        assert isinstance(items[2], CaseIs)
 
     def test_with(self):
         mod = parse("Sub T()\nWith obj\n.Name = 1\nEnd With\nEnd Sub")

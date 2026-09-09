@@ -9,7 +9,7 @@ from __future__ import annotations
 from vba2py.lexer import Token, TokenType, tokenize
 from vba2py.ast_nodes import (
     Module, VarDecl, ConstDecl, Sub, Function, Param,
-    AssignStmt, SetStmt, CallStmt, IfStmt, CaseClause, SelectCaseStmt,
+    AssignStmt, SetStmt, CallStmt, IfStmt, CaseClause, CaseRange, CaseIs, SelectCaseStmt,
     ForStmt, ForEachStmt, DoWhileStmt, DoUntilStmt, WhileStmt,
     WithStmt, DimStmt, ExitStmt, ReturnStmt, OnErrorStmt, LabelStmt,
     ReDimStmt, GoToStmt, EraseStmt, OptionStmt,
@@ -471,10 +471,10 @@ class Parser:
                 self.skip_newlines()
                 else_body = self._parse_body(end_check=self._is_end_select)
                 break
-            # Regular Case expr, expr, …
-            exprs: list[Expression] = [self.parse_expression()]
+            # Regular Case item, item, … (expr | expr To expr | Is <op> expr)
+            exprs: list = [self._parse_case_item()]
             while self.match(TokenType.COMMA):
-                exprs.append(self.parse_expression())
+                exprs.append(self._parse_case_item())
             self.expect_end_of_statement()
             self.skip_newlines()
             body = self._parse_body(end_check=self._is_end_select)
@@ -487,6 +487,30 @@ class Parser:
         node = SelectCaseStmt(expr=expr, cases=cases, else_body=else_body)
         node.lineno = lineno
         return node
+
+    _CASE_IS_OPS = {
+        TokenType.EQ: "=",
+        TokenType.NEQ: "<>",
+        TokenType.LT: "<",
+        TokenType.GT: ">",
+        TokenType.LTE: "<=",
+        TokenType.GTE: ">=",
+    }
+
+    def _parse_case_item(self):
+        """Parse one item of a Case clause: expr | expr To expr | Is <op> expr."""
+        if self.at(TokenType.KW_IS):
+            self.advance()
+            tok = self.peek()
+            op = self._CASE_IS_OPS.get(tok.type)
+            if op is None:
+                raise ParseError("Expected comparison operator after 'Case Is'", tok)
+            self.advance()
+            return CaseIs(op=op, value=self.parse_expression())
+        expr = self.parse_expression()
+        if self.match(TokenType.KW_TO):
+            return CaseRange(lo=expr, hi=self.parse_expression())
+        return expr
 
     # -- For / For Each -----------------------------------------------------
 

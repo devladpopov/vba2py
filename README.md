@@ -16,6 +16,9 @@ pip install vba2py
 # Convert a VBA file to Python
 vba2py macro.bas -o output.py
 
+# Extract and convert macros straight from an Excel workbook
+vba2py workbook.xlsm -o output.py
+
 # Print the AST instead
 vba2py macro.bas --ast
 ```
@@ -84,6 +87,7 @@ def SumRange(lastRow) -> float:
 | **If/ElseIf** | `If ... ElseIf ... Else ... End If` | `if ... elif ... else:` |
 | **Single-line If** | `If x > 0 Then y = 1` | `if (x > 0): y = 1` |
 | **Select Case** | `Select Case x ... End Select` | `if x == ...: elif ...` |
+| **Case To / Is** | `Case 1 To 10`, `Case Is > 100` | `if 1 <= x <= 10:`, `elif x > 100:` |
 | **With blocks** | `With obj ... .Name = 1 ... End With` | `_with_0 = obj; _with_0.Name = 1` |
 | **Set** | `Set obj = New Collection` | `obj = Collection()` |
 | **Exit** | `Exit For`, `Exit Sub`, `Exit Function` | `break`, `return` |

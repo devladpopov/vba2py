@@ -15,7 +15,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="vba2py",
         description="Convert VBA source code to Python.",
     )
-    ap.add_argument("input", help="VBA source file (.bas / .vba / .txt)")
+    ap.add_argument("input", help="VBA source file (.bas / .vba / .txt) or Office file (.xlsm / .xls / .docm)")
     ap.add_argument("-o", "--output", help="Output Python file (default: stdout)")
     ap.add_argument("--ast", action="store_true", help="Print AST instead of Python code")
     args = ap.parse_args(argv)
@@ -25,7 +25,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: file not found: {src_path}", file=sys.stderr)
         return 1
 
-    source = src_path.read_text(encoding="utf-8-sig")
+    from vba2py.extract import ExtractionError, extract_vba, is_office_file
+
+    if is_office_file(src_path):
+        try:
+            source = extract_vba(src_path)
+        except ExtractionError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+    else:
+        source = src_path.read_text(encoding="utf-8-sig")
 
     try:
         module = parse(source)

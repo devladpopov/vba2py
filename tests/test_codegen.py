@@ -80,6 +80,36 @@ class TestConditionals:
         assert "if x == 1:" in py
         assert "else:" in py
 
+    def test_select_case_to_range(self):
+        py = vba_to_py("Sub T()\nSelect Case x\nCase 1 To 10\ny = 1\nEnd Select\nEnd Sub")
+        assert "if 1 <= x <= 10:" in py
+        compile(py, "<gen>", "exec")
+
+    def test_select_case_is(self):
+        py = vba_to_py("Sub T()\nSelect Case x\nCase Is > 100\ny = 1\nCase Is <> 0\ny = 2\nEnd Select\nEnd Sub")
+        assert "if x > 100:" in py
+        assert "elif x != 0:" in py
+        compile(py, "<gen>", "exec")
+
+    def test_select_case_range_executes(self):
+        vba = (
+            "Function Grade(score)\nSelect Case score\n"
+            'Case Is >= 90\nGrade = "A"\n'
+            'Case 80 To 89\nGrade = "B"\n'
+            'Case Else\nGrade = "F"\n'
+            "End Select\nEnd Function"
+        )
+        ns: dict = {}
+        exec(vba_to_py(vba), ns)
+        assert ns["Grade"](95) == "A"
+        assert ns["Grade"](85) == "B"
+        assert ns["Grade"](10) == "F"
+
+    def test_select_case_mixed(self):
+        py = vba_to_py("Sub T()\nSelect Case x\nCase 1, 5 To 9, Is > 100\ny = 1\nEnd Select\nEnd Sub")
+        assert "if x == 1 or 5 <= x <= 9 or x > 100:" in py
+        compile(py, "<gen>", "exec")
+
 
 class TestStringFunctions:
     def test_left(self):

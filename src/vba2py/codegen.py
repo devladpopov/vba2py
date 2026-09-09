@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from vba2py.ast_nodes import (
     Module, Sub, Function, Param, VarDecl, ConstDecl,
-    AssignStmt, SetStmt, CallStmt, IfStmt, SelectCaseStmt, CaseClause,
+    AssignStmt, SetStmt, CallStmt, IfStmt, SelectCaseStmt, CaseClause, CaseRange, CaseIs,
     ForStmt, ForEachStmt, DoWhileStmt, DoUntilStmt, WhileStmt,
     WithStmt, DimStmt, ExitStmt, ReturnStmt, OnErrorStmt, LabelStmt,
     ReDimStmt, GoToStmt, EraseStmt, OptionStmt,
@@ -240,15 +240,32 @@ class CodeGenerator:
             self._emit_body(node.else_body)
             self._indent -= 1
 
+    _CASE_IS_PY_OPS = {"=": "==", "<>": "!=", "<": "<", ">": ">", "<=": "<=", ">=": ">="}
+
+    def _case_condition(self, var: str, item) -> str:
+        if isinstance(item, CaseRange):
+            return f"{self._expr(item.lo)} <= {var} <= {self._expr(item.hi)}"
+        if isinstance(item, CaseIs):
+            return f"{var} {self._CASE_IS_PY_OPS[item.op]} {self._expr(item.value)}"
+        return f"{var} == {self._expr(item)}"
+
     def _emit_SelectCaseStmt(self, node: SelectCaseStmt) -> None:
         var = self._expr(node.expr)
         for i, case in enumerate(node.cases):
-            vals = ", ".join(self._expr(e) for e in case.expressions)
             keyword = "if" if i == 0 else "elif"
-            if len(case.expressions) == 1:
-                self._emit(f"{keyword} {var} == {vals}:")
-            else:
+            plain = all(
+                not isinstance(e, (CaseRange, CaseIs)) for e in case.expressions
+            )
+            if plain and len(case.expressions) == 1:
+                self._emit(f"{keyword} {var} == {self._expr(case.expressions[0])}:")
+            elif plain:
+                vals = ", ".join(self._expr(e) for e in case.expressions)
                 self._emit(f"{keyword} {var} in ({vals}):")
+            else:
+                cond = " or ".join(
+                    self._case_condition(var, e) for e in case.expressions
+                )
+                self._emit(f"{keyword} {cond}:")
             self._indent += 1
             self._emit_body(case.body)
             self._indent -= 1

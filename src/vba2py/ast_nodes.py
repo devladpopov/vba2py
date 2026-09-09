@@ -116,8 +116,23 @@ class IfStmt(Statement):
 
 
 @dataclass
+class CaseRange(ASTNode):
+    """`Case 1 To 10` — inclusive range test."""
+    lo: Expression | None = None
+    hi: Expression | None = None
+
+
+@dataclass
+class CaseIs(ASTNode):
+    """`Case Is > 5` — comparison test. op is the VBA operator (=, <>, <, >, <=, >=)."""
+    op: str = "="
+    value: Expression | None = None
+
+
+@dataclass
 class CaseClause(ASTNode):
-    expressions: list[Expression] = field(default_factory=list)
+    # Items are Expression (equality), CaseRange, or CaseIs
+    expressions: list = field(default_factory=list)
     body: list[Statement] = field(default_factory=list)
 
 
